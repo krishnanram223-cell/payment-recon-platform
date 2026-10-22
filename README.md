@@ -60,4 +60,5 @@ payment-recon-platform/
 
 All data is synthetic; card numbers are masked test BINs.
 
-Project need to implement with realtime streaming data's
+Project need to implement with realtime streaming data
+
