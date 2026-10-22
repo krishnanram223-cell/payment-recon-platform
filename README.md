@@ -32,6 +32,13 @@ python -m payrecon.generator.generate_psp_files --start-date 2026-10-19 --days 3
 pytest -v
 ```
 
+## Bronze ingestion (milestone 1.2)
+
+```bash
+python -m payrecon.ingestion.bronze      # landing files -> Bronze Delta tables + audit log
+python -m payrecon.tools.show_tables     # row counts per day/PSP and the audit log
+```
+
 ## Repository layout
 
 ```
