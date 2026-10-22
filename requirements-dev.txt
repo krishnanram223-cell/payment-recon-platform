@@ -1,0 +1,2 @@
+# Milestone 1.1 needs only pytest. PySpark/Delta are added in milestone 1.2.
+pytest>=8.0
