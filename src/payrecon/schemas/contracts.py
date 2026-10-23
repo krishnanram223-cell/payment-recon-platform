@@ -46,7 +46,7 @@ SETTLEMENT_FIELDS: tuple[Field, ...] = (
     Field("currency", "string", True, "ISO-4217 code"),
 )
 
-VALID_CURRENCIES = frozenset({"EUR", "SEK", "PLN", "GBP", "USD"})
+VALID_CURRENCIES = frozenset({"EUR", "SEK", "PLN", "GBP", "USD","NOK"})
 VALID_TRANSACTION_TYPES = frozenset({"PURCHASE", "REFUND"})
 VALID_CARD_SCHEMES = frozenset({"VISA", "MASTERCARD", "AMEX"})
 VALID_ENTRY_MODES = frozenset({"CHIP", "CONTACTLESS", "ECOM", "MAGSTRIPE"})
