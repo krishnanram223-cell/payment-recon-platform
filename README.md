@@ -65,6 +65,18 @@ python -m payrecon.streaming.consumer_demo            # read them as consumer gr
 docker compose down                                   # stop Kafka when done (data kept)
 ```
 
+## Spark Structured Streaming (milestone 2.2)
+
+```bash
+python -m payrecon.streaming.stream_to_bronze --available-now   # everything waiting in Kafka, then stop
+python -m payrecon.streaming.stream_to_bronze                   # continuous, a micro-batch every 10 s
+```
+
+Kafka → `bronze/payment_events` (every message exactly once, keyed by topic/partition/offset)
+→ `silver/payment_events` (one row per `event_id`) and invalid messages → `payment-events-dlq`.
+Progress lives in `data/lakehouse/_checkpoints/payment_events`. If you delete the Kafka topic
+(`docker compose down -v`), delete that checkpoint folder too.
+
 `--as-of-date` is "today" for the settlement window: an approved transaction with no
 settlement is `PENDING_SETTLEMENT` while `as_of_date <= business_date + window`
 (default 2 days) and `MISSING_SETTLEMENT` after.

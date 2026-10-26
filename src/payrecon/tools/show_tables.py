@@ -62,7 +62,18 @@ def main() -> None:
                 "settled_net_amount", "matched_count", "break_count",
             ).orderBy("business_date", "merchant_id").show(10, truncate=False)
 
-        for table in (AUDIT_TABLE, SILVER_AUDIT_TABLE, GOLD_AUDIT_TABLE):
+        print("\n=== streaming: payment events ===")
+        stream_bronze = load_or_none(spark, paths.bronze("payment_events"))
+        stream_silver = load_or_none(spark, paths.silver("payment_events"))
+        if stream_bronze is None:
+            print("(no streamed data yet)")
+        else:
+            print(f"bronze.payment_events (Kafka messages): {stream_bronze.count()}")
+            if stream_silver is not None:
+                late = stream_silver.filter(F.col("is_late")).count()
+                print(f"silver.payment_events (unique events): {stream_silver.count()}  late: {late}")
+
+        for table in (AUDIT_TABLE, SILVER_AUDIT_TABLE, GOLD_AUDIT_TABLE, "stream_batches"):
             print(f"\n=== audit.{table} (latest 10) ===")
             audit = load_or_none(spark, paths.audit(table))
             if audit is None:

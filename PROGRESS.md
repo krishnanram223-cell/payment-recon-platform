@@ -17,8 +17,8 @@ Development environment: GitHub Codespaces (Debian 12, Python 3.12, Java 17).
 
 | Milestone | Status |
 |---|---|
-| 2.1 Kafka in Docker, event contract + generator with stream defects, producer, consumer groups/offsets | 🔄 in progress |
-| 2.2 Spark Structured Streaming: Kafka → Bronze events, checkpoints, dedup by event_id, DLQ | ⏳ |
+| 2.1 Kafka in Docker, event contract + generator with stream defects, producer, consumer groups/offsets | ✅ verified in codespace (4365 sent, 45 duplicates, 45 late); experiment 3 + full test run pending |
+| 2.2 Spark Structured Streaming: Kafka → Bronze events, checkpoints, dedup by event_id, DLQ | 🔄 in progress |
 
 ## Roadmap (all local and free until Phase 4)
 
