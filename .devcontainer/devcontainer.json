@@ -1,10 +1,10 @@
 {
   "name": "payment-recon-platform",
-  "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bookworm",
+  "build": { "dockerfile": "Dockerfile" },
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {}
   },
-  "postCreateCommand": "sudo rm -f /etc/apt/sources.list.d/yarn.list && sudo apt-get update && sudo apt-get install -y openjdk-17-jdk-headless && pip install -r requirements-dev.txt && pip install -e .",
+  "postCreateCommand": "pip install -r requirements-dev.txt && pip install -e .",
   "forwardPorts": [8080],
   "portsAttributes": {
     "8080": { "label": "Kafka UI" }
