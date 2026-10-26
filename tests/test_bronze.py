@@ -114,3 +114,18 @@ def test_bronze_write_is_idempotent_after_crash(spark, tmp_path):
     write_bronze(one_file, table, first["_business_date"], first["_source_file_sha256"])
 
     assert spark.read.format("delta").load(table).count() == total_before
+def test_control_file_name_mismatch_is_rejected(spark, tmp_path):
+    paths = make_data(tmp_path)
+    target = next((paths.landing / "transactions").glob("PSP01_*.csv"))
+    rewrite_control(target, file_name="PSP09_TXN_20991231_001.csv")
+
+    results = {r.file_name: r for r in run_bronze(spark, paths)}
+
+    assert results[target.name].status == "REJECTED"
+    assert results[target.name].reason == "CONTROL_FILE_NAME_MISMATCH"
+    assert (
+        bronze(spark, paths, "clearing_transactions")
+        .filter(F.col("_source_file") == target.name)
+        .count()
+        == 0
+    )
