@@ -39,6 +39,13 @@ python -m payrecon.ingestion.bronze      # landing files -> Bronze Delta tables 
 python -m payrecon.tools.show_tables     # row counts per day/PSP and the audit log
 ```
 
+## Silver layer (milestone 1.3)
+
+```bash
+python -m payrecon.transform.silver      # validate, type, deduplicate -> Silver + quarantine
+python -m payrecon.tools.show_tables     # now also shows Silver, quarantine reasons, Silver audit
+```
+
 ## Repository layout
 
 ```
@@ -59,6 +66,3 @@ payment-recon-platform/
 ```
 
 All data is synthetic; card numbers are masked test BINs.
-
-Project need to implement with realtime streaming data
-

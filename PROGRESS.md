@@ -9,8 +9,8 @@ Development environment: GitHub Codespaces (Debian 12, Python 3.12, Java 17).
 |---|---|
 | 0 Development environment (Codespaces) | ✅ done |
 | 1.1 Data contracts + synthetic PSP clearing/settlement files + tests | ✅ done |
-| 1.2 PySpark + Delta; Bronze ingestion with audit columns, control-file and replay checks | ✅ done |
-| 1.3 Silver: validation, quarantine, MERGE dedup | ⏳ |
+| 1.2 PySpark + Delta; Bronze ingestion with audit columns, control-file and replay checks | ✅ done (gate: quiz 14/15, Task 1 passed; Task 2 control-file-name check included, verified by its test) |
+| 1.3 Silver: validation, quarantine, MERGE dedup, verified against ground truth | 🔄 in progress |
 | 1.4 Clearing ↔ settlement reconciliation + Gold, verified against ground truth | ⏳ |
 
 ## Roadmap (all local and free until Phase 4)

@@ -13,6 +13,7 @@ def get_spark(app_name: str = "payrecon") -> SparkSession:
         .config("spark.sql.catalog.spark_catalog", "org.apache.spark.sql.delta.catalog.DeltaCatalog")
         .config("spark.sql.shuffle.partitions", "4")  # default 200 is far too many for small local data
         .config("spark.sql.session.timeZone", "UTC")  # payments are always reasoned about in UTC
+        .config("spark.sql.legacy.timeParserPolicy", "CORRECTED")  # invalid dates -> NULL with try_ functions, never old lenient parsing
         .config("spark.ui.showConsoleProgress", "false")
         .config("spark.driver.memory", "2g")
     )

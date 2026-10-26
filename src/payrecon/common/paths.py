@@ -18,8 +18,15 @@ class Paths:
     def lakehouse(self) -> Path:
         return self.root / "lakehouse"
 
+    @property
+    def reference(self) -> Path:
+        return self.root / "reference"
+
     def bronze(self, table: str) -> str:
         return str(self.lakehouse / "bronze" / table)
+
+    def silver(self, table: str) -> str:
+        return str(self.lakehouse / "silver" / table)
 
     def audit(self, table: str) -> str:
         return str(self.lakehouse / "audit" / table)

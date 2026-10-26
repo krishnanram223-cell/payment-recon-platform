@@ -197,13 +197,12 @@ def ingest_file(spark: SparkSession, paths: Paths, csv_path: Path, kind: FileKin
         result.reason = "INVALID_CONTROL_FILE"
         return result
 
-    result.file_sha256 = sha256_of(csv_path)
-
     # The control file must describe THIS csv file, not another one
     if control.get("file_name") != csv_path.name:
         result.reason = "CONTROL_FILE_NAME_MISMATCH"
         return result
-    
+
+    result.file_sha256 = sha256_of(csv_path)
     if result.file_sha256 != expected_sha:
         result.reason = "CHECKSUM_MISMATCH"
         return result
