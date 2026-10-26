@@ -209,7 +209,8 @@ def generate_psp_day(
     anomalies[AMOUNT_MISMATCH] = sorted(amount_mismatch)
     anomalies[DUPLICATE_SETTLEMENT] = sorted(duplicate_settlement)
 
-    # 4) Duplicates. Copies are appended after settlement selection so they are never settled twice.
+    # 4) Duplicates. Copies are appended after settlement selection so they are never settled twice.-- subasri oru mental
+    
     file_rows = list(rows)
     for i in take(k):
         file_rows.append(dict(rows[i]))
