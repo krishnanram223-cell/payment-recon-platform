@@ -115,7 +115,7 @@ See `SETTLEMENT_FIELDS`. `gross_amount` is signed (refunds negative).
 | Check | Break types |
 |---|---|
 | Stream ↔ clearing | `MISSING_IN_CLEARING` (authorised, never cleared), `MISSING_IN_STREAM` (cleared, event never seen), `AMOUNT_DIFF_STREAM_CLEARING` |
-| Clearing ↔ settlement | `MISSING_SETTLEMENT`, `ORPHAN_SETTLEMENT`, `DUPLICATE_SETTLEMENT`, `AMOUNT_MISMATCH` |
+| Clearing ↔ settlement (implemented, milestone 1.4) | `MATCHED`, `PENDING_SETTLEMENT` (inside the settlement window), `MISSING_SETTLEMENT`, `ORPHAN_SETTLEMENT`, `UNEXPECTED_SETTLEMENT` (declined but settled), `DUPLICATE_SETTLEMENT`, `CURRENCY_MISMATCH`, `AMOUNT_MISMATCH` |
 | Row validation | quarantine reasons (`MISSING_MANDATORY_FIELD`, `INVALID_CURRENCY`, `INVALID_AMOUNT`, `INVALID_TIMESTAMP`) |
 
 Late data: reconciliation runs over a rolling window (D-2..D) and re-opens/closes breaks

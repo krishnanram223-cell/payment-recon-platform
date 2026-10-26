@@ -46,6 +46,29 @@ python -m payrecon.transform.silver      # validate, type, deduplicate -> Silver
 python -m payrecon.tools.show_tables     # now also shows Silver, quarantine reasons, Silver audit
 ```
 
+## Reconciliation and Gold (milestone 1.4)
+
+```bash
+python -m payrecon.gold.reconciliation --as-of-date 2026-12-31   # match clearing vs settlement, build Gold
+python -m payrecon.tools.show_tables                              # recon statuses + merchant daily summary
+```
+
+## Real-time events with Kafka (milestone 2.1)
+
+```bash
+docker compose up -d                                  # Kafka 4.1 (KRaft) + Kafbat UI on port 8080
+python -m payrecon.generator.generate_events          # data/stream/events_*.jsonl from the clearing files
+python -m payrecon.streaming.admin create             # topics: payment-events (3 partitions), payment-events-dlq
+python -m payrecon.streaming.producer --rate 0        # send all events
+python -m payrecon.streaming.admin describe           # messages per partition
+python -m payrecon.streaming.consumer_demo            # read them as consumer group "demo"
+docker compose down                                   # stop Kafka when done (data kept)
+```
+
+`--as-of-date` is "today" for the settlement window: an approved transaction with no
+settlement is `PENDING_SETTLEMENT` while `as_of_date <= business_date + window`
+(default 2 days) and `MISSING_SETTLEMENT` after.
+
 ## Repository layout
 
 ```

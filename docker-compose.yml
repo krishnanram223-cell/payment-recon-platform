@@ -1,0 +1,54 @@
+# Local Kafka for development: one broker in KRaft mode (no ZooKeeper) + a web UI.
+#
+#   docker compose up -d      start in the background
+#   docker compose ps         check status
+#   docker compose logs kafka read broker logs
+#   docker compose down       stop (topics and data are kept in the named volume)
+#   docker compose down -v    stop AND delete all Kafka data
+#
+# Listeners:
+#   localhost:9092  used by programs in the codespace (producer, consumer, Spark)
+#   kafka:29092     used by other containers on the compose network (the UI)
+
+services:
+  kafka:
+    image: apache/kafka:4.1.2
+    container_name: kafka
+    hostname: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:29093
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092,CONTROLLER://0.0.0.0:29093
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+      # A single broker can only hold one copy of each internal topic
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      # Topics are created explicitly by payrecon.streaming.admin, never by accident
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+      # Keep memory small: the codespace also runs Spark
+      KAFKA_HEAP_OPTS: "-Xms512m -Xmx512m"
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+
+  kafka-ui:
+    image: ghcr.io/kafbat/kafka-ui:v1.0.0
+    container_name: kafka-ui
+    ports:
+      - "8080:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      JAVA_OPTS: "-Xms128m -Xmx256m"
+    depends_on:
+      - kafka
+
+volumes:
+  kafka-data:
