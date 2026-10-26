@@ -28,6 +28,9 @@ class Paths:
     def silver(self, table: str) -> str:
         return str(self.lakehouse / "silver" / table)
 
+    def gold(self, table: str) -> str:
+        return str(self.lakehouse / "gold" / table)
+
     def audit(self, table: str) -> str:
         return str(self.lakehouse / "audit" / table)
 

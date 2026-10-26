@@ -46,6 +46,17 @@ python -m payrecon.transform.silver      # validate, type, deduplicate -> Silver
 python -m payrecon.tools.show_tables     # now also shows Silver, quarantine reasons, Silver audit
 ```
 
+## Reconciliation and Gold (milestone 1.4)
+
+```bash
+python -m payrecon.gold.reconciliation --as-of-date 2026-12-31   # match clearing vs settlement, build Gold
+python -m payrecon.tools.show_tables                              # recon statuses + merchant daily summary
+```
+
+`--as-of-date` is "today" for the settlement window: an approved transaction with no
+settlement is `PENDING_SETTLEMENT` while `as_of_date <= business_date + window`
+(default 2 days) and `MISSING_SETTLEMENT` after.
+
 ## Repository layout
 
 ```
