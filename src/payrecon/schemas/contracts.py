@@ -61,31 +61,3 @@ def field_names(fields: tuple[Field, ...]) -> list[str]:
 
 def mandatory_field_names(fields: tuple[Field, ...]) -> list[str]:
     return [f.name for f in fields if f.mandatory]
-
-
-# --------------------------------------------------------------------------- real-time payment events
-# One JSON message per event on the Kafka topic "payment-events".
-# Money travels as a STRING ("12.50"), never a JSON number: JSON numbers are
-# floats in most languages and would lose cents.
-EVENT_SCHEMA_VERSION = 1
-
-PAYMENT_EVENT_FIELDS: tuple[Field, ...] = (
-    Field("event_id", "string", True, "Unique per event; re-sends keep the same id"),
-    Field("event_type", "string", True, "AUTHORISED / DECLINED / REFUNDED"),
-    Field("event_timestamp", "timestamp", True, "When the payment happened (event time), ISO-8601 UTC"),
-    Field("produced_at", "timestamp", True, "When the gateway sent the event, ISO-8601 UTC with ms"),
-    Field("psp_code", "string", True, "PSP that processed the payment"),
-    Field("psp_transaction_id", "string", True, "Same id as in the clearing file; also the Kafka key"),
-    Field("merchant_id", "string", True, "Acquirer merchant id"),
-    Field("terminal_id", "string", True, "Terminal / channel id"),
-    Field("transaction_type", "string", True, "PURCHASE or REFUND"),
-    Field("amount", "decimal(18,2)", True, "Positive amount as a string"),
-    Field("currency", "string", True, "ISO-4217 code"),
-    Field("card_scheme", "string", True, "VISA / MASTERCARD / AMEX"),
-    Field("masked_pan", "string", True, "Masked card number"),
-    Field("entry_mode", "string", True, "CHIP / CONTACTLESS / ECOM / MAGSTRIPE"),
-    Field("response_code", "string", True, "'00' approved, otherwise declined"),
-    Field("schema_version", "int", True, "Contract version, for schema evolution"),
-)
-
-VALID_EVENT_TYPES = frozenset({"AUTHORISED", "DECLINED", "REFUNDED"})

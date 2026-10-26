@@ -2,5 +2,3 @@
 # Delta Lake 4.0.x is built for Apache Spark 4.0.x (see docs.delta.io/latest/releases.html).
 pyspark>=4.0.0,<4.1
 delta-spark==4.0.1
-# Kafka client (wraps librdkafka; wheels include the C library)
-confluent-kafka>=2.15,<3
