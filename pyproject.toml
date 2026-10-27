@@ -14,4 +14,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 pythonpath = ["src"]
 testpaths = ["tests"]
-markers = ["kafka: needs a running Kafka broker (skipped automatically when none is reachable)"]
+markers = [
+    "kafka: needs a running Kafka broker (skipped automatically when none is reachable)",
+    "slow: streaming and full-pipeline tests (several minutes each)",
+]

@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "17 2 * * *"   # nightly full run
+  workflow_dispatch:
+
+jobs:
+  fast:
+    name: Fast tests (generator, Bronze, Silver, Gold, events)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Cache Spark packages (Delta, Kafka connector)
+        uses: actions/cache@v4
+        with:
+          path: ~/.ivy2*
+          key: ivy-${{ hashFiles('requirements.txt') }}
+      - run: pip install -r requirements-dev.txt && pip install -e .
+      - run: python -m pytest -q -m "not kafka and not slow"
+
+  full:
+    name: Full suite (streaming, lifecycle, watermarks, Kafka)
+    if: github.event_name != 'push' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Cache Spark packages (Delta, Kafka connector)
+        uses: actions/cache@v4
+        with:
+          path: ~/.ivy2*
+          key: ivy-${{ hashFiles('requirements.txt') }}
+      - name: Start Kafka
+        run: |
+          docker compose up -d kafka
+          for i in $(seq 1 30); do
+            docker compose exec -T kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1 && break
+            sleep 2
+          done
+      - run: pip install -r requirements-dev.txt && pip install -e .
+      - run: python -m pytest -q
