@@ -73,6 +73,22 @@ def main() -> None:
                 late = stream_silver.filter(F.col("is_late")).count()
                 print(f"silver.payment_events (unique events): {stream_silver.count()}  late: {late}")
 
+        print("\n=== silver.transaction_lifecycle: rows by channel ===")
+        lifecycle = load_or_none(spark, paths.silver("transaction_lifecycle"))
+        if lifecycle is None:
+            print("(table does not exist yet)")
+        else:
+            lifecycle.groupBy("seen_in_stream", "seen_in_clearing").count().orderBy(
+                "seen_in_stream", "seen_in_clearing"
+            ).show()
+
+        print("\n=== gold.three_way_reconciliation: stream vs clearing ===")
+        three_way = load_or_none(spark, paths.gold("three_way_reconciliation"))
+        if three_way is None:
+            print("(table does not exist yet)")
+        else:
+            three_way.groupBy("stream_status").count().orderBy(F.col("count").desc()).show(truncate=False)
+
         for table in (AUDIT_TABLE, SILVER_AUDIT_TABLE, GOLD_AUDIT_TABLE, "stream_batches"):
             print(f"\n=== audit.{table} (latest 10) ===")
             audit = load_or_none(spark, paths.audit(table))

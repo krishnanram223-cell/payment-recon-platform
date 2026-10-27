@@ -77,6 +77,17 @@ Kafka → `bronze/payment_events` (every message exactly once, keyed by topic/pa
 Progress lives in `data/lakehouse/_checkpoints/payment_events`. If you delete the Kafka topic
 (`docker compose down -v`), delete that checkpoint folder too.
 
+## Batch + stream together (milestone 3.1)
+
+```bash
+python -m payrecon.transform.lifecycle                        # one row per payment, from clearing AND stream
+python -m payrecon.gold.three_way --as-of-date 2026-12-31     # stream vs clearing vs settlement
+```
+
+`silver/transaction_lifecycle` is filled by two independent MERGEs (clearing side and a
+Delta-to-Delta stream on `silver/payment_events`). Each side only fills its own columns,
+so the result is identical whichever channel arrives first, and re-runs change nothing.
+
 `--as-of-date` is "today" for the settlement window: an approved transaction with no
 settlement is `PENDING_SETTLEMENT` while `as_of_date <= business_date + window`
 (default 2 days) and `MISSING_SETTLEMENT` after.
