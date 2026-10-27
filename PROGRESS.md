@@ -11,14 +11,21 @@ Development environment: GitHub Codespaces (Debian 12, Python 3.12, Java 17).
 | 1.1 Data contracts + synthetic PSP clearing/settlement files + tests | ✅ done |
 | 1.2 PySpark + Delta; Bronze ingestion with audit columns, control-file and replay checks | ✅ done (gate: quiz 14/15, Task 1 passed; Task 2 control-file-name check included, verified by its test) |
 | 1.3 Silver: validation, quarantine, MERGE dedup, verified against ground truth | ✅ done (22 tests passing) |
-| 1.4 Clearing ↔ settlement reconciliation + Gold, verified against ground truth | ⚠️ code delivered, test run not yet confirmed |
+| 1.4 Clearing ↔ settlement reconciliation + Gold, verified against ground truth | ✅ done (7 Gold tests passing) |
 
 ## Current phase: 2 — Real-time (local)
 
 | Milestone | Status |
 |---|---|
-| 2.1 Kafka in Docker, event contract + generator with stream defects, producer, consumer groups/offsets | ✅ verified in codespace (4365 sent, 45 duplicates, 45 late); experiment 3 + full test run pending |
-| 2.2 Spark Structured Streaming: Kafka → Bronze events, checkpoints, dedup by event_id, DLQ | 🔄 in progress |
+| 2.1 Kafka in Docker, event contract + generator with stream defects, producer, consumer groups/offsets | ✅ done (4365 sent, 45 duplicates, 45 late; tests passing) |
+| 2.2 Spark Structured Streaming: Kafka → Bronze events, checkpoints, dedup by event_id, DLQ | ✅ done (4320 unique events, 45 duplicates removed; all 37 tests passing) |
+
+## Current phase: 3 — Batch + stream unified (local)
+
+| Milestone | Status |
+|---|---|
+| 3.1 Transaction lifecycle from both channels (order-independent MERGE, Delta streaming source) + three-way reconciliation | ✅ done (4275 matched, 45 missing in stream, 45 missing in clearing; 44 tests passing) |
+| 3.2 Watermarks + windowed streaming aggregations (near-real-time merchant volumes) + batch restatement | 🔄 in progress |
 
 ## Roadmap (all local and free until Phase 4)
 

@@ -77,9 +77,33 @@ Kafka → `bronze/payment_events` (every message exactly once, keyed by topic/pa
 Progress lives in `data/lakehouse/_checkpoints/payment_events`. If you delete the Kafka topic
 (`docker compose down -v`), delete that checkpoint folder too.
 
+## Batch + stream together (milestone 3.1)
+
+```bash
+python -m payrecon.transform.lifecycle                        # one row per payment, from clearing AND stream
+python -m payrecon.gold.three_way --as-of-date 2026-12-31     # stream vs clearing vs settlement
+```
+
+`silver/transaction_lifecycle` is filled by two independent MERGEs (clearing side and a
+Delta-to-Delta stream on `silver/payment_events`). Each side only fills its own columns,
+so the result is identical whichever channel arrives first, and re-runs change nothing.
+
 `--as-of-date` is "today" for the settlement window: an approved transaction with no
 settlement is `PENDING_SETTLEMENT` while `as_of_date <= business_date + window`
 (default 2 days) and `MISSING_SETTLEMENT` after.
+
+## Watermarks and windowed aggregation (milestone 3.2)
+
+```bash
+python -m payrecon.streaming.merchant_volumes --available-now   # Kafka -> 15-min merchant windows (watermark 10 min)
+python -m payrecon.gold.volume_restatement                       # same windows from Silver in batch + comparison
+```
+
+`gold/merchant_volumes_15m` is the fast view: a window is written once, when the watermark
+passes its end, and events later than the watermark are dropped. `gold/merchant_volumes_15m_restated`
+is the exact view, recomputed from Silver (which keeps every event). The restatement prints
+how many late events the stream missed. Try `--watermark-minutes 480` with a fresh
+checkpoint to see the trade-off: nothing missed, but windows are finalised 8 hours later.
 
 ## Repository layout
 
