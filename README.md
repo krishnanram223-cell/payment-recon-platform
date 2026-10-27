@@ -1,103 +1,149 @@
-# Real-Time Payment Acquiring, Processing and Reconciliation Platform
+# Payment Acquiring, Processing and Reconciliation Platform
 
-Portfolio project simulating how a payment processor ingests PSP transaction and
-settlement files (and later real-time events), validates them, reconciles them,
-and reports to merchants.
+[![CI](https://github.com/krishnanram223-cell/payment-recon-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/krishnanram223-cell/payment-recon-platform/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.12-blue)
+![Spark](https://img.shields.io/badge/PySpark-4.0-orange)
+![Delta Lake](https://img.shields.io/badge/Delta%20Lake-4.0-00ADD4)
+![Kafka](https://img.shields.io/badge/Kafka-4.1%20KRaft-black)
 
-See [docs/architecture.md](docs/architecture.md) for design and data contracts and
-[PROGRESS.md](PROGRESS.md) for status.
+Every card payment is reported three times: as a real-time event when the card is tapped,
+in the PSP's end-of-day **clearing** file, and in the **settlement** file when the money
+actually moves. When those three disagree, somebody is losing money.
 
-## Quick start (milestone 1.1)
+This project ingests all three channels into a Delta Lake lakehouse, keeps one record per
+payment, and reconciles stream vs clearing vs settlement. Every break gets a status and a
+reason. I work with acquiring data in my day job; this is my own end-to-end rebuild of that
+world with batch **and** streaming, on synthetic data.
 
-### Option 1 — GitHub Codespaces (no local install)
+## Architecture
 
-Open the repo on GitHub → **Code → Codespaces → Create codespace on main**.
-The dev container (`.devcontainer/devcontainer.json`) installs Python 3.12, Java 17,
-Docker and the project dependencies automatically. Then:
+```mermaid
+flowchart LR
+    subgraph Sources
+        F[PSP clearing + settlement CSV<br/>+ .ctl control files]
+        G[Gateway events]
+    end
+    K[[Kafka<br/>payment-events<br/>3 partitions + DLQ]]
+
+    subgraph Lakehouse["Spark 4 + Delta Lake"]
+        BB[(Bronze files<br/>checksum, replay guard)]
+        BS[(Bronze events<br/>exactly once per offset)]
+        SB[(Silver transactions / settlements<br/>validated, deduplicated)]
+        Q[(Quarantine<br/>with reasons)]
+        SE[(Silver events<br/>one row per event_id)]
+        L[(Transaction lifecycle<br/>one row per payment)]
+        R[Gold reconciliation<br/>clearing vs settlement]
+        T[Gold three-way<br/>stream vs clearing vs settlement]
+        V[Real-time merchant volumes<br/>15-min windows, watermark]
+        RS[Restated volumes<br/>batch from Silver]
+    end
+
+    F --> BB --> SB --> R --> T
+    SB --> Q
+    G --> K --> BS --> SE
+    SB --> L
+    SE --> L --> T
+    K --> V
+    SE --> RS
+```
+
+## What it does
+
+| Layer | Job | Guarantees |
+|---|---|---|
+| Bronze (files) | `ingestion/bronze.py` | file name, control file, SHA-256 and record count checked; each file loaded once; crash-safe rewrite with `replaceWhere`; audit row per file |
+| Silver (batch) | `transform/silver.py` | typed with ANSI-safe `try_` casts; first failing rule becomes the quarantine reason; in-file and cross-file duplicates removed; insert-only MERGE |
+| Gold | `gold/reconciliation.py` | one status per key: MATCHED, PENDING / MISSING_SETTLEMENT (settlement window), DUPLICATE, AMOUNT / CURRENCY mismatch, ORPHAN, UNEXPECTED; merchant daily summary |
+| Streaming | `streaming/stream_to_bronze.py` | Kafka to Bronze (MERGE on topic/partition/offset) and Silver (MERGE on `event_id`), dead-letter queue, checkpoints, `availableNow` or continuous |
+| Lifecycle | `transform/lifecycle.py` | one row per payment filled by both channels; same result in any arrival order; Delta-to-Delta streaming; retries on concurrent commits |
+| Three-way | `gold/three_way.py` | separate stream and settlement verdicts; clearing window (PENDING vs MISSING_IN_CLEARING) |
+| Real-time volumes | `streaming/merchant_volumes.py` | 15-minute windows, watermark, `dropDuplicatesWithinWatermark`, append mode, dropped-row metric |
+| Restatement | `gold/volume_restatement.py` | recomputes the same windows from Silver and reports exactly what the stream missed |
+
+## How correctness is proven
+
+The generators plant known defects (invalid rows, duplicates, late files, missing / wrong /
+duplicate settlements, missing and ghost events, late and re-sent events) and write their ids
+to an answer key the pipeline never reads. The tests compare each layer's output with that
+key id by id, and also check idempotence, crash recovery and arrival-order independence.
+
+Results on the default data set (3 days, 3 PSPs, seed 42):
+
+| Check | Result |
+|---|---|
+| Silver | 8,610 rows in, 8,355 inserted, 255 quarantined (all planted) |
+| Clearing vs settlement | 3,855 MATCHED; 45 each of MISSING, AMOUNT_MISMATCH, DUPLICATE, ORPHAN |
+| Kafka | 4,365 messages, 4,320 unique events, 45 re-sends removed |
+| Stream vs clearing | 4,275 MATCHED, 45 MISSING_IN_STREAM, 45 MISSING_IN_CLEARING |
+| Test suite | 50 tests passing |
+
+## Run it
+
+Open the repo in **GitHub Codespaces** (the dev container installs Python 3.12, Java 17 and
+Docker), or on any Linux machine with those installed:
 
 ```bash
+pip install -r requirements-dev.txt && pip install -e .
+docker compose up -d kafka
+
+# batch
 python -m payrecon.generator.generate_psp_files --start-date 2026-10-19 --days 3
-pytest -v
+python -m payrecon.ingestion.bronze
+python -m payrecon.transform.silver
+python -m payrecon.gold.reconciliation --as-of-date 2026-12-31
+
+# streaming
+python -m payrecon.generator.generate_events
+python -m payrecon.streaming.admin create
+python -m payrecon.streaming.producer --rate 0
+python -m payrecon.streaming.stream_to_bronze --available-now
+
+# both channels together
+python -m payrecon.transform.lifecycle
+python -m payrecon.gold.three_way --as-of-date 2026-12-31
+python -m payrecon.streaming.merchant_volumes --available-now
+python -m payrecon.gold.volume_restatement
+
+python -m payrecon.tools.show_tables      # look at every table
 ```
 
-### Option 2 — local Linux / WSL2
+Tests:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements-dev.txt
-pip install -e .
-
-python -m payrecon.generator.generate_psp_files --start-date 2026-10-19 --days 3
-pytest -v
+python -m pytest -q -m "not kafka and not slow"   # fast set, a few minutes
+python -m pytest -q                               # everything (Kafka running, Kafka UI stopped)
 ```
-
-## Bronze ingestion (milestone 1.2)
-
-```bash
-python -m payrecon.ingestion.bronze      # landing files -> Bronze Delta tables + audit log
-python -m payrecon.tools.show_tables     # row counts per day/PSP and the audit log
-```
-
-## Silver layer (milestone 1.3)
-
-```bash
-python -m payrecon.transform.silver      # validate, type, deduplicate -> Silver + quarantine
-python -m payrecon.tools.show_tables     # now also shows Silver, quarantine reasons, Silver audit
-```
-
-## Reconciliation and Gold (milestone 1.4)
-
-```bash
-python -m payrecon.gold.reconciliation --as-of-date 2026-12-31   # match clearing vs settlement, build Gold
-python -m payrecon.tools.show_tables                              # recon statuses + merchant daily summary
-```
-
-## Real-time events with Kafka (milestone 2.1)
-
-```bash
-docker compose up -d                                  # Kafka 4.1 (KRaft) + Kafbat UI on port 8080
-python -m payrecon.generator.generate_events          # data/stream/events_*.jsonl from the clearing files
-python -m payrecon.streaming.admin create             # topics: payment-events (3 partitions), payment-events-dlq
-python -m payrecon.streaming.producer --rate 0        # send all events
-python -m payrecon.streaming.admin describe           # messages per partition
-python -m payrecon.streaming.consumer_demo            # read them as consumer group "demo"
-docker compose down                                   # stop Kafka when done (data kept)
-```
-
-## Spark Structured Streaming (milestone 2.2)
-
-```bash
-python -m payrecon.streaming.stream_to_bronze --available-now   # everything waiting in Kafka, then stop
-python -m payrecon.streaming.stream_to_bronze                   # continuous, a micro-batch every 10 s
-```
-
-Kafka → `bronze/payment_events` (every message exactly once, keyed by topic/partition/offset)
-→ `silver/payment_events` (one row per `event_id`) and invalid messages → `payment-events-dlq`.
-Progress lives in `data/lakehouse/_checkpoints/payment_events`. If you delete the Kafka topic
-(`docker compose down -v`), delete that checkpoint folder too.
-
-`--as-of-date` is "today" for the settlement window: an approved transaction with no
-settlement is `PENDING_SETTLEMENT` while `as_of_date <= business_date + window`
-(default 2 days) and `MISSING_SETTLEMENT` after.
 
 ## Repository layout
 
 ```
-payment-recon-platform/
-├── docs/architecture.md          # design, AWS→Azure mapping, contracts, rules
-├── src/payrecon/
-│   ├── schemas/contracts.py      # single source of truth for columns & reference values
-│   ├── generator/                # synthetic PSP files + ground-truth manifest
-│   ├── ingestion/                # (1.2) Bronze
-│   ├── transform/                # (1.3) Silver + quarantine
-│   └── reconciliation/           # (1.4) recon + Gold
-├── sql/                          # (later) analytical SQL, Snowflake DDL
-├── tests/
-└── data/                         # generated, git-ignored
-    ├── landing/{transactions,settlements}/
-    ├── reference/merchants.csv
-    └── ground_truth/             # test oracle only — the pipeline never reads it
+src/payrecon/
+  schemas/contracts.py        data contracts: columns, types, allowed values
+  generator/                  synthetic PSP files, gateway events, answer keys
+  common/                     paths, Spark session, Delta helpers
+  ingestion/bronze.py         file ingestion
+  transform/                  Silver and the transaction lifecycle
+  gold/                       reconciliation, three-way, restatement
+  streaming/                  Kafka admin, producer, consumer demo, streaming jobs
+  tools/show_tables.py        read-only overview of every table
+tests/                        50 tests against the answer keys
+docs/                         architecture and design decisions
 ```
 
-All data is synthetic; card numbers are masked test BINs.
+## Design notes
+
+- [docs/DESIGN_DECISIONS.md](docs/DESIGN_DECISIONS.md): why each layer works the way it does, and two incidents I debugged along the way
+- [docs/architecture.md](docs/architecture.md): target architecture including the Snowflake warehouse
+- [PROGRESS.md](PROGRESS.md): milestone log
+
+## Roadmap
+
+- [x] Batch lakehouse: Bronze, Silver, Gold reconciliation
+- [x] Kafka + Structured Streaming with exactly-once Delta sinks
+- [x] Lifecycle and three-way reconciliation
+- [x] Watermarked real-time volumes with batch restatement
+- [ ] Snowflake star schema and loads (dbt)
+- [ ] Deployment on Databricks with Workflows
+- [ ] Monitoring and alerting on break volumes and dropped events
+
+All data is synthetic. Card numbers are masked public test BINs; no real card or customer data is used.
