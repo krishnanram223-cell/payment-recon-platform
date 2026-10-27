@@ -47,7 +47,7 @@ flowchart LR
     SE --> RS
 ```
 
-## What it does
+## What it does ---
 
 | Layer | Job | Guarantees |
 |---|---|---|
