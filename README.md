@@ -103,7 +103,12 @@ python -m payrecon.gold.volume_restatement                       # same windows 
 passes its end, and events later than the watermark are dropped. `gold/merchant_volumes_15m_restated`
 is the exact view, recomputed from Silver (which keeps every event). The restatement prints
 how many late events the stream missed. Try `--watermark-minutes 480` with a fresh
-checkpoint to see the trade-off: nothing missed, but windows are finalised 8 hours later.
+checkpoint to see the trade-off: fewer events missed, but windows are finalised 8 hours later.
+
+The watermark is global across Kafka partitions. When a backlog is replayed, partitions drift
+apart in event time (about 2 hours here), so on-time events in a lagging partition count as late.
+Rebuild backlogs from Silver (the restatement) and alert on `rows_dropped_by_watermark` in
+`audit/volume_stream_runs`.
 
 ## Repository layout
 

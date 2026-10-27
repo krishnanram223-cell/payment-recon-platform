@@ -25,7 +25,7 @@ Development environment: GitHub Codespaces (Debian 12, Python 3.12, Java 17).
 | Milestone | Status |
 |---|---|
 | 3.1 Transaction lifecycle from both channels (order-independent MERGE, Delta streaming source) + three-way reconciliation | ✅ done (4275 matched, 45 missing in stream, 45 missing in clearing; 44 tests passing) |
-| 3.2 Watermarks + windowed streaming aggregations (near-real-time merchant volumes) + batch restatement | 🔄 in progress |
+| 3.2 Watermarks + windowed streaming aggregations (near-real-time merchant volumes) + batch restatement | ✅ done (6 tests passing; Kafka replay showed partition skew: 884 / 79 / 20 events dropped at 10 / 120 / 480-min watermarks, drop metric = restatement difference) |
 
 ## Roadmap (all local and free until Phase 4)
 
